@@ -93,6 +93,15 @@
         <button class="graph-tab" data-graph="single">1回分の変化</button>
       </div>
 
+      <div id="range-selector-wrap">
+        <select class="record-select" id="range-select">
+          <option value="30">直近1ヶ月</option>
+          <option value="90">直近3ヶ月</option>
+          <option value="180">直近半年</option>
+          <option value="all" selected>全期間</option>
+        </select>
+      </div>
+
       <div id="graph-trend3" class="chart-wrap">
         <canvas id="chart-trend3"></canvas>
       </div>

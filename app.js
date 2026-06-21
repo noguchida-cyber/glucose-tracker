@@ -254,6 +254,8 @@ const graphEl = {
     single: document.getElementById('chart-single'),
   },
   recordSelect: document.getElementById('single-record-select'),
+  rangeSelect: document.getElementById('range-select'),
+  rangeWrap: document.getElementById('range-selector-wrap'),
 };
 
 function initGraphTabs() {
@@ -264,12 +266,14 @@ function initGraphTabs() {
       Object.entries(graphEl.panels).forEach(([key, node]) => {
         node.style.display = (key === target) ? 'block' : 'none';
       });
+      graphEl.rangeWrap.style.display = (target === 'single') ? 'none' : 'block';
     });
   });
   graphEl.recordSelect.addEventListener('change', () => {
     const id = Number(graphEl.recordSelect.value);
     renderSingleChart(id);
   });
+  graphEl.rangeSelect.addEventListener('change', () => refreshGraphs());
 }
 
 function destroyChart(key) {
@@ -279,11 +283,21 @@ function destroyChart(key) {
   }
 }
 
-async function refreshGraphs() {
-  const records = await DB.getAllRecords();
-  const sorted = [...records].sort((a, b) => `${a.date} ${a.time}`.localeCompare(`${b.date} ${b.time}`));
+function filterByRange(sortedRecords) {
+  const rangeValue = graphEl.rangeSelect.value;
+  if (rangeValue === 'all') return sortedRecords;
+  const days = Number(rangeValue);
+  const cutoff = new Date();
+  cutoff.setDate(cutoff.getDate() - days);
+  const cutoffStr = cutoff.toISOString().slice(0, 10);
+  return sortedRecords.filter((r) => r.date >= cutoffStr);
+}
 
-  if (sorted.length === 0) {
+async function refreshGraphs() {
+  const allRecords = await DB.getAllRecords();
+  const sortedAll = [...allRecords].sort((a, b) => `${a.date} ${a.time}`.localeCompare(`${b.date} ${b.time}`));
+
+  if (sortedAll.length === 0) {
     destroyChart('trend3');
     destroyChart('after2');
     destroyChart('single');
@@ -291,7 +305,18 @@ async function refreshGraphs() {
     return;
   }
 
+  const sorted = filterByRange(sortedAll);
+  if (sorted.length === 0) {
+    destroyChart('trend3');
+    destroyChart('after2');
+    return;
+  }
+
   const labels = sorted.map((r) => `${formatDateLabel(r.date)} ${r.time}`);
+  const minWidth = Math.max(labels.length * 50, 320);
+  graphEl.canvases.trend3.parentElement.style.minWidth = '';
+  graphEl.canvases.trend3.style.minWidth = `${minWidth}px`;
+  graphEl.canvases.after2.style.minWidth = `${minWidth}px`;
 
   destroyChart('trend3');
   charts.trend3 = new Chart(graphEl.canvases.trend3, {
@@ -306,6 +331,7 @@ async function refreshGraphs() {
     },
     options: {
       responsive: true,
+      maintainAspectRatio: false,
       plugins: { legend: { position: 'bottom' } },
       scales: { x: { ticks: { maxRotation: 60, minRotation: 60 } } },
     },
@@ -340,20 +366,21 @@ async function refreshGraphs() {
     },
     options: {
       responsive: true,
+      maintainAspectRatio: false,
       plugins: { legend: { position: 'bottom' } },
       scales: { x: { ticks: { maxRotation: 60, minRotation: 60 } } },
     },
   });
 
-  graphEl.recordSelect.innerHTML = sorted
+  graphEl.recordSelect.innerHTML = sortedAll
     .slice()
     .reverse()
     .map((r) => `<option value="${r.id}">${formatDateLabel(r.date)} ${r.time}${r.menu ? ' - ' + r.menu : ''}</option>`)
     .join('');
-  if (sorted.length > 0) {
-    const latestId = sorted[sorted.length - 1].id;
+  if (sortedAll.length > 0) {
+    const latestId = sortedAll[sortedAll.length - 1].id;
     graphEl.recordSelect.value = latestId;
-    renderSingleChart(latestId, sorted);
+    renderSingleChart(latestId, sortedAll);
   }
 }
 
@@ -389,6 +416,7 @@ async function renderSingleChart(id, recordsCache) {
     },
     options: {
       responsive: true,
+      maintainAspectRatio: false,
       plugins: { legend: { position: 'bottom' } },
     },
   });
