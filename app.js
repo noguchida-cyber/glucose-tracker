@@ -175,6 +175,7 @@ function recordCardHtml(r) {
     <div class="record-card" data-id="${r.id}">
       <div class="rc-top">
         <span>${formatDateLabel(r.date)} ${r.time}</span>
+        <button type="button" class="rc-delete-btn" data-id="${r.id}" aria-label="削除">削除</button>
       </div>
       <div class="rc-values">
         <div class="rc-val"><div class="num">${r.before ?? '-'}</div><div class="tag">食事前</div></div>
@@ -186,7 +187,22 @@ function recordCardHtml(r) {
   `;
 }
 
+async function deleteRecordById(id) {
+  const ok = confirm('この記録を削除しますか？');
+  if (!ok) return;
+  await DB.deleteRecord(id);
+  showToast('記録を削除しました');
+  await refreshHome();
+  await refreshAllRecordsList();
+}
+
 function bindRecordCardClicks(container) {
+  container.querySelectorAll('.rc-delete-btn').forEach((btn) => {
+    btn.addEventListener('click', async (e) => {
+      e.stopPropagation();
+      await deleteRecordById(Number(btn.dataset.id));
+    });
+  });
   container.querySelectorAll('.record-card').forEach((card) => {
     card.addEventListener('click', async () => {
       const id = Number(card.dataset.id);

@@ -116,9 +116,21 @@ main {
 .record-card .rc-top {
   display: flex;
   justify-content: space-between;
+  align-items: center;
   font-size: 13px;
   color: #888;
   margin-bottom: 8px;
+}
+
+.rc-delete-btn {
+  border: 1px solid #e3b3b3;
+  background: #fff;
+  color: #c43a3a;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 4px 10px;
+  border-radius: 10px;
+  cursor: pointer;
 }
 
 .rc-values {
