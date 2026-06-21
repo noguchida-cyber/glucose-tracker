@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>血糖値記録</title>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#222222">
+<link rel="apple-touch-icon" href="icons/icon-192.png">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div id="app">
+
+  <header class="topbar">
+    <h1 id="header-title">血糖値記録</h1>
+    <button class="icon-btn" id="back-btn" style="display:none;" aria-label="戻る">←</button>
+  </header>
+
+  <main>
+
+    <!-- ホーム画面 -->
+    <section class="view active" id="view-home">
+      <div class="summary-grid">
+        <div class="summary-card">
+          <div class="label">直近の食後2h</div>
+          <div class="value" id="summary-latest">--</div>
+        </div>
+        <div class="summary-card">
+          <div class="label">今月の記録数</div>
+          <div class="value" id="summary-count">0件</div>
+        </div>
+      </div>
+
+      <button class="cta-btn" id="btn-new-record">＋ 新しく記録する</button>
+
+      <div class="section-title">最近の記録</div>
+      <div id="recent-list"></div>
+    </section>
+
+    <!-- 記録入力画面 -->
+    <section class="view" id="view-form">
+      <form id="record-form">
+        <div class="form-row">
+          <div class="form-group">
+            <label for="f-date">日付</label>
+            <input type="date" id="f-date" required>
+          </div>
+          <div class="form-group">
+            <label for="f-time">時間（食事開始）</label>
+            <input type="time" id="f-time" required>
+          </div>
+        </div>
+
+        <div class="glucose-input-group">
+          <div class="form-group">
+            <label for="f-before">食事前</label>
+            <input type="number" id="f-before" inputmode="numeric" placeholder="mg/dL">
+          </div>
+          <div class="form-group">
+            <label for="f-after1">食後1h</label>
+            <input type="number" id="f-after1" inputmode="numeric" placeholder="mg/dL">
+          </div>
+          <div class="form-group">
+            <label for="f-after2">食後2h</label>
+            <input type="number" id="f-after2" inputmode="numeric" placeholder="mg/dL">
+          </div>
+        </div>
+
+        <div id="delta-display" class="delta-display"></div>
+        <div id="feedback-badge"></div>
+
+        <div class="form-group" style="margin-top:16px;">
+          <label for="f-menu">メニュー</label>
+          <textarea id="f-menu" placeholder="食べたものを記録"></textarea>
+        </div>
+
+        <div class="form-group">
+          <label for="f-note">備考・メモ</label>
+          <textarea id="f-note" placeholder="運動メモなど"></textarea>
+        </div>
+
+        <button type="submit" class="save-btn" id="btn-save">保存する</button>
+        <button type="button" class="danger-btn" id="btn-delete" style="display:none;">この記録を削除する</button>
+      </form>
+    </section>
+
+    <!-- グラフ画面 -->
+    <section class="view" id="view-graph">
+      <div class="graph-tabs">
+        <button class="graph-tab active" data-graph="trend3">3本同時</button>
+        <button class="graph-tab" data-graph="after2">食後2hのみ</button>
+        <button class="graph-tab" data-graph="single">1回分の変化</button>
+      </div>
+
+      <div id="graph-trend3" class="chart-wrap">
+        <canvas id="chart-trend3"></canvas>
+      </div>
+
+      <div id="graph-after2" class="chart-wrap" style="display:none;">
+        <canvas id="chart-after2"></canvas>
+      </div>
+
+      <div id="graph-single" class="chart-wrap" style="display:none;">
+        <select class="record-select" id="single-record-select"></select>
+        <canvas id="chart-single"></canvas>
+      </div>
+    </section>
+
+    <!-- 設定／CSV画面 -->
+    <section class="view" id="view-settings">
+      <div class="settings-block">
+        <h3>CSVエクスポート</h3>
+        <p>現在のすべての記録を、これまでのスプレッドシートと同じ列構成でCSVファイルとして保存します。Google Driveへは手動でアップロードしてください。</p>
+        <button class="settings-btn" id="btn-export-csv">CSVをダウンロード</button>
+      </div>
+
+      <div class="settings-block">
+        <h3>CSVインポート（初回のみ推奨）</h3>
+        <p id="import-status">過去のスプレッドシートのデータをCSVで取り込めます。通常は最初の1回だけ行ってください。</p>
+        <input type="file" id="csv-file-input" accept=".csv,text/csv" style="display:none;">
+        <button class="settings-btn" id="btn-import-csv">CSVファイルを選ぶ</button>
+      </div>
+    </section>
+
+  </main>
+
+  <nav class="bottomnav">
+    <button class="nav-btn active" data-view="home"><span class="nav-icon">🏠</span>ホーム</button>
+    <button class="nav-btn" data-view="graph"><span class="nav-icon">📈</span>グラフ</button>
+    <button class="nav-btn" data-view="settings"><span class="nav-icon">⚙️</span>設定</button>
+  </nav>
+
+  <div class="toast" id="toast"></div>
+
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+<script src="db.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
