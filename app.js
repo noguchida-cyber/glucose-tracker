@@ -10,6 +10,7 @@ const el = {
   backBtn: document.getElementById('back-btn'),
   views: {
     home: document.getElementById('view-home'),
+    list: document.getElementById('view-list'),
     form: document.getElementById('view-form'),
     graph: document.getElementById('view-graph'),
     settings: document.getElementById('view-settings'),
@@ -18,6 +19,7 @@ const el = {
   summaryLatest: document.getElementById('summary-latest'),
   summaryCount: document.getElementById('summary-count'),
   recentList: document.getElementById('recent-list'),
+  allRecordsList: document.getElementById('all-records-list'),
   btnNewRecord: document.getElementById('btn-new-record'),
   recordForm: document.getElementById('record-form'),
   fDate: document.getElementById('f-date'),
@@ -145,6 +147,7 @@ async function handleFormSubmit(e) {
   }
 
   await refreshHome();
+  await refreshAllRecordsList();
   showView('home');
 }
 
@@ -154,6 +157,7 @@ async function handleDelete() {
   await DB.deleteRecord(state.editingId);
   showToast('記録を削除しました');
   await refreshHome();
+  await refreshAllRecordsList();
   showView('home');
 }
 
@@ -165,30 +169,25 @@ function sortRecordsDesc(records) {
   });
 }
 
-function renderRecentList(records) {
-  const recent = sortRecordsDesc(records).slice(0, 10);
-  if (recent.length === 0) {
-    el.recentList.innerHTML = '<div class="empty-state">まだ記録がありません</div>';
-    return;
-  }
-  el.recentList.innerHTML = recent.map((r) => {
-    const after2Class = r.after2 != null ? (r.after2 <= TARGET_AFTER2 ? 'good' : 'bad') : '';
-    return `
-      <div class="record-card" data-id="${r.id}">
-        <div class="rc-top">
-          <span>${formatDateLabel(r.date)} ${r.time}</span>
-        </div>
-        <div class="rc-values">
-          <div class="rc-val"><div class="num">${r.before ?? '-'}</div><div class="tag">食事前</div></div>
-          <div class="rc-val"><div class="num">${r.after1 ?? '-'}</div><div class="tag">食後1h</div></div>
-          <div class="rc-val"><div class="num ${after2Class}">${r.after2 ?? '-'}</div><div class="tag">食後2h</div></div>
-        </div>
-        <div class="rc-menu">${r.menu ? escapeHtml(r.menu) : ''}</div>
+function recordCardHtml(r) {
+  const after2Class = r.after2 != null ? (r.after2 <= TARGET_AFTER2 ? 'good' : 'bad') : '';
+  return `
+    <div class="record-card" data-id="${r.id}">
+      <div class="rc-top">
+        <span>${formatDateLabel(r.date)} ${r.time}</span>
       </div>
-    `;
-  }).join('');
+      <div class="rc-values">
+        <div class="rc-val"><div class="num">${r.before ?? '-'}</div><div class="tag">食事前</div></div>
+        <div class="rc-val"><div class="num">${r.after1 ?? '-'}</div><div class="tag">食後1h</div></div>
+        <div class="rc-val"><div class="num ${after2Class}">${r.after2 ?? '-'}</div><div class="tag">食後2h</div></div>
+      </div>
+      <div class="rc-menu">${r.menu ? escapeHtml(r.menu) : ''}</div>
+    </div>
+  `;
+}
 
-  el.recentList.querySelectorAll('.record-card').forEach((card) => {
+function bindRecordCardClicks(container) {
+  container.querySelectorAll('.record-card').forEach((card) => {
     card.addEventListener('click', async () => {
       const id = Number(card.dataset.id);
       const records2 = await DB.getAllRecords();
@@ -196,6 +195,31 @@ function renderRecentList(records) {
       if (record) openEditRecordForm(record);
     });
   });
+}
+
+function renderRecentList(records) {
+  const recent = sortRecordsDesc(records).slice(0, 10);
+  if (recent.length === 0) {
+    el.recentList.innerHTML = '<div class="empty-state">まだ記録がありません</div>';
+    return;
+  }
+  el.recentList.innerHTML = recent.map(recordCardHtml).join('');
+  bindRecordCardClicks(el.recentList);
+}
+
+function renderAllRecordsList(records) {
+  const all = sortRecordsDesc(records);
+  if (all.length === 0) {
+    el.allRecordsList.innerHTML = '<div class="empty-state">まだ記録がありません</div>';
+    return;
+  }
+  el.allRecordsList.innerHTML = all.map(recordCardHtml).join('');
+  bindRecordCardClicks(el.allRecordsList);
+}
+
+async function refreshAllRecordsList() {
+  const records = await DB.getAllRecords();
+  renderAllRecordsList(records);
 }
 
 function escapeHtml(str) {
@@ -230,9 +254,10 @@ function initNav() {
   el.navBtns.forEach((btn) => {
     btn.addEventListener('click', () => {
       const view = btn.dataset.view;
-      const titles = { home: '血糖値記録', graph: 'グラフ', settings: '設定' };
+      const titles = { home: '血糖値記録', list: '記録一覧', graph: 'グラフ', settings: '設定' };
       showView(view, titles[view]);
       if (view === 'graph') refreshGraphs();
+      if (view === 'list') refreshAllRecordsList();
     });
   });
   el.backBtn.addEventListener('click', () => showView('home'));
@@ -606,6 +631,7 @@ async function importCsvFile(file) {
   await DB.setMeta('hasImported', true);
   showToast(`${records.length}件取り込みました`);
   await refreshHome();
+  await refreshAllRecordsList();
   await updateImportStatus();
 }
 
@@ -639,6 +665,7 @@ function initSettings() {
     await DB.setMeta('hasImported', false);
     showToast('すべての記録を削除しました');
     await refreshHome();
+    await refreshAllRecordsList();
     await updateImportStatus();
   });
   updateImportStatus();
