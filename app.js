@@ -535,18 +535,19 @@ async function importCsvFile(file) {
   await updateImportStatus();
 }
 
+let hasImportedCache = false;
+
 async function updateImportStatus() {
-  const hasImported = await DB.getMeta('hasImported');
-  settingsEl.importStatus.textContent = hasImported
+  hasImportedCache = !!(await DB.getMeta('hasImported'));
+  settingsEl.importStatus.textContent = hasImportedCache
     ? '※すでに一度インポート済みです。再度インポートすると記録が重複する可能性があります。'
     : '過去のスプレッドシートのデータをCSVで取り込めます。通常は最初の1回だけ行ってください。';
 }
 
 function initSettings() {
   settingsEl.btnExport.addEventListener('click', exportCsv);
-  settingsEl.btnImport.addEventListener('click', async () => {
-    const hasImported = await DB.getMeta('hasImported');
-    if (hasImported) {
+  settingsEl.btnImport.addEventListener('click', () => {
+    if (hasImportedCache) {
       const ok = confirm('すでにインポート済みです。もう一度インポートすると記録が重複する可能性があります。続けますか？');
       if (!ok) return;
     }
