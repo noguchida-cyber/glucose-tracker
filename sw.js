@@ -1,4 +1,4 @@
-const CACHE_NAME = 'glucose-tracker-v3';
+const CACHE_NAME = 'glucose-tracker-v4';
 const ASSETS = [
   './',
   './index.html',

@@ -402,6 +402,7 @@ const settingsEl = {
   btnExport: document.getElementById('btn-export-csv'),
   btnImport: document.getElementById('btn-import-csv'),
   fileInput: document.getElementById('csv-file-input'),
+  btnClearAll: document.getElementById('btn-clear-all'),
 };
 
 function csvEscape(value) {
@@ -495,33 +496,78 @@ function parseCsvText(text) {
   return rows.filter((r) => r.some((c) => c.trim() !== ''));
 }
 
+const HEADER_KEY_MAP = {
+  'No.': 'no', 'No': 'no',
+  '日付': 'date',
+  '時間': 'time',
+  '食事前': 'before',
+  '食後1h': 'after1', '食後1ｈ': 'after1',
+  '食後2h': 'after2', '食後2ｈ': 'after2',
+  '食後1h変化': 'delta1', '食後1ｈ変化': 'delta1',
+  '食後2h変化': 'delta2', '食後2ｈ変化': 'delta2',
+  'メニュー': 'menu',
+  '備考': 'note',
+};
+
+function findHeaderRowIndex(rows) {
+  for (let i = 0; i < rows.length; i += 1) {
+    const cells = rows[i].map((c) => c.trim());
+    if (cells.includes('日付') && cells.includes('時間')) return i;
+  }
+  return -1;
+}
+
+function buildColumnMap(headerRow) {
+  const map = {};
+  headerRow.forEach((cell, idx) => {
+    const key = HEADER_KEY_MAP[cell.trim()];
+    if (key) map[key] = idx;
+  });
+  return map;
+}
+
 async function importCsvFile(file) {
   const text = await file.text();
   const rows = parseCsvText(text);
-  if (rows.length < 2) {
-    alert('CSVにデータ行が見つかりませんでした');
+  const headerIdx = findHeaderRowIndex(rows);
+  if (headerIdx === -1) {
+    alert('CSVの見出し行（日付・時間など）が見つかりませんでした');
     return;
   }
-  const dataRows = rows.slice(1); // ヘッダー行を除く
+  const colMap = buildColumnMap(rows[headerIdx]);
+  if (colMap.date === undefined || colMap.before === undefined) {
+    alert('CSVの列構成を認識できませんでした');
+    return;
+  }
+  const dataRows = rows.slice(headerIdx + 1);
 
+  const get = (cols, key) => (colMap[key] !== undefined ? (cols[colMap[key]] ?? '') : '');
+
+  let lastDate = '';
   const records = dataRows.map((cols) => {
-    const [, dateStr, timeStr, beforeStr, after1Str, after2Str, , , menuStr, noteStr] = cols;
-    const before = parseNumberOrNull(beforeStr);
-    const after1 = parseNumberOrNull(after1Str);
-    const after2 = parseNumberOrNull(after2Str);
+    let dateStr = get(cols, 'date').trim();
+    if (dateStr === '↑') {
+      dateStr = lastDate;
+    } else if (dateStr !== '') {
+      lastDate = dateStr;
+    }
+    const timeStr = get(cols, 'time');
+    const before = parseNumberOrNull(get(cols, 'before'));
+    const after1 = parseNumberOrNull(get(cols, 'after1'));
+    const after2 = parseNumberOrNull(get(cols, 'after2'));
     const { delta1, delta2 } = computeDeltas(before, after1, after2);
     return {
-      date: parseCsvDate(dateStr || ''),
+      date: dateStr ? parseCsvDate(dateStr) : '',
       time: parseCsvTime(timeStr || ''),
       before,
       after1,
       after2,
       delta1,
       delta2,
-      menu: (menuStr || '').trim(),
-      note: (noteStr || '').trim(),
+      menu: get(cols, 'menu').trim(),
+      note: get(cols, 'note').trim(),
     };
-  }).filter((r) => r.date);
+  }).filter((r) => r.date && (r.before != null || r.after1 != null || r.after2 != null));
 
   if (records.length === 0) {
     alert('取り込めるデータがありませんでした');
@@ -557,6 +603,15 @@ function initSettings() {
     const file = e.target.files[0];
     if (file) await importCsvFile(file);
     settingsEl.fileInput.value = '';
+  });
+  settingsEl.btnClearAll.addEventListener('click', async () => {
+    const ok = confirm('本当にすべての記録を削除しますか？この操作は元に戻せません。');
+    if (!ok) return;
+    await DB.clearAllRecords();
+    await DB.setMeta('hasImported', false);
+    showToast('すべての記録を削除しました');
+    await refreshHome();
+    await updateImportStatus();
   });
   updateImportStatus();
 }

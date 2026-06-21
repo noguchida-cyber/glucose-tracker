@@ -64,6 +64,9 @@ const DB = {
   async setMeta(key, value) {
     return withStore(META_STORE, 'readwrite', (store) => store.put({ key, value }));
   },
+  async clearAllRecords() {
+    return withStore(STORE, 'readwrite', (store) => store.clear());
+  },
   async bulkAddRecords(records) {
     const db = await openDB();
     return new Promise((resolve, reject) => {
